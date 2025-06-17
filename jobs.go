@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultQueue           = "tasqueue:tasks"
-	defaultMaxRetry uint32 = 1
+	defaultMaxRetry uint32 = 3
 )
 
 // Job represents a unit of work pushed by producers.
@@ -66,6 +66,9 @@ func DefaultMeta(opts JobOpts) Meta {
 	if opts.ID == "" {
 		opts.ID = uuid.NewString()
 	}
+	if opts.MaxRetries == 0 {
+		opts.MaxRetries = defaultMaxRetry
+	}
 
 	return Meta{
 		ID:       opts.ID,
@@ -103,14 +106,14 @@ func (c JobCtx) Save(b []byte) error {
 	return c.store.Set(c, c.Meta.ID, b)
 }
 
-// JobMessage is a wrapper over Task, used to transport the task over a broker.
+// JobMessage is a wrapper over Job Meta, used to transport the task over a broker.
 // It contains additional fields such as status and a ID.
 type JobMessage struct {
 	Meta
 	Job *Job
 }
 
-// message() converts a task into a TaskMessage, ready to be enqueued onto the broker.
+// message() converts a task into a JobMessage, ready to be enqueued onto the broker.
 func (t *Job) message(meta Meta) JobMessage {
 	return JobMessage{
 		Meta: meta,
@@ -246,7 +249,7 @@ func (s *Server) setJobMessage(ctx context.Context, t JobMessage) error {
 	return nil
 }
 
-// GetJob accepts a ID and returns the job message in the results store.
+// GetJob accepts a ID and returns the job message from the results store.
 // This is useful to check the status of a job message.
 func (s *Server) GetJob(ctx context.Context, id string) (JobMessage, error) {
 	var span spans.Span
