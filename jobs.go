@@ -164,7 +164,7 @@ func (s *Server) enqueueWithMeta(ctx context.Context, t Job, meta Meta) (string,
 	)
 
 	// Set job status in the results backend.
-	if err := s.statusStarted(ctx, msg); err != nil {
+	if err := s.setStatus(ctx, msg, StatusStarted); err != nil {
 		s.spanError(span, err)
 		return "", err
 	}

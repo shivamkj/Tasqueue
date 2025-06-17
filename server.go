@@ -106,10 +106,10 @@ type Server struct {
 	p       sync.RWMutex
 	tasks   map[string]Task
 	q       sync.RWMutex
-	queues  map[string]uint32
+	queues  map[string]uint32 // map of queue name to it's concurrency
 	useJSON bool
 
-	defaultConc int
+	defaultConc int // default concurrency
 }
 
 type ServerOpts struct {
@@ -160,7 +160,7 @@ func (s *Server) GetTasks() []string {
 
 var ErrNotFound = errors.New("result not found")
 
-// GetResult() accepts a ID and returns the result of the job in the results store.
+// GetResult() accepts a ID and returns the result of the job from the results store.
 func (s *Server) GetResult(ctx context.Context, id string) ([]byte, error) {
 	b, err := s.results.Get(ctx, id)
 	if err == nil {
@@ -285,7 +285,7 @@ func (s *Server) process(ctx context.Context, w chan []byte) {
 			}
 
 			// Set the job status as being "processed"
-			if err := s.statusProcessing(ctx, msg); err != nil {
+			if err := s.setStatus(ctx, msg, StatusProcessing); err != nil {
 				s.spanError(span, err)
 				s.log.Error("error setting the status to processing", "error", err)
 				break
@@ -430,7 +430,7 @@ func (s *Server) retryJob(ctx context.Context, msg JobMessage) error {
 		return err
 	}
 
-	if err := s.statusRetrying(ctx, msg); err != nil {
+	if err := s.setStatus(ctx, msg, StatusRetrying); err != nil {
 		s.spanError(span, err)
 		return err
 	}
@@ -466,33 +466,15 @@ func (s *Server) getHandler(name string) (Task, error) {
 	return fn, nil
 }
 
-func (s *Server) statusStarted(ctx context.Context, t JobMessage) error {
+func (s *Server) setStatus(ctx context.Context, t JobMessage, status string) error {
 	var span spans.Span
 	if s.traceProv != nil {
-		ctx, span = otel.Tracer(tracer).Start(ctx, "status_started")
+		ctx, span = otel.Tracer(tracer).Start(ctx, status)
 		defer span.End()
 	}
 
 	t.ProcessedAt = time.Now()
-	t.Status = StatusStarted
-
-	if err := s.setJobMessage(ctx, t); err != nil {
-		s.spanError(span, err)
-		return err
-	}
-
-	return nil
-}
-
-func (s *Server) statusProcessing(ctx context.Context, t JobMessage) error {
-	var span spans.Span
-	if s.traceProv != nil {
-		ctx, span = otel.Tracer(tracer).Start(ctx, "status_processing")
-		defer span.End()
-	}
-
-	t.ProcessedAt = time.Now()
-	t.Status = StatusProcessing
+	t.Status = status
 
 	if err := s.setJobMessage(ctx, t); err != nil {
 		s.spanError(span, err)
@@ -537,24 +519,6 @@ func (s *Server) statusFailed(ctx context.Context, t JobMessage) error {
 	if err := s.results.SetFailed(ctx, t.ID); err != nil {
 		return err
 	}
-
-	if err := s.setJobMessage(ctx, t); err != nil {
-		s.spanError(span, err)
-		return err
-	}
-
-	return nil
-}
-
-func (s *Server) statusRetrying(ctx context.Context, t JobMessage) error {
-	var span spans.Span
-	if s.traceProv != nil {
-		ctx, span = otel.Tracer(tracer).Start(ctx, "status_retrying")
-		defer span.End()
-	}
-
-	t.ProcessedAt = time.Now()
-	t.Status = StatusRetrying
 
 	if err := s.setJobMessage(ctx, t); err != nil {
 		s.spanError(span, err)
