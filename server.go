@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
-	"github.com/vmihailenco/msgpack/v5"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -104,10 +103,11 @@ type Server struct {
 	cron      *cron.Cron
 	traceProv *trace.TracerProvider
 
-	p      sync.RWMutex
-	tasks  map[string]Task
-	q      sync.RWMutex
-	queues map[string]uint32
+	p       sync.RWMutex
+	tasks   map[string]Task
+	q       sync.RWMutex
+	queues  map[string]uint32
+	useJSON bool
 
 	defaultConc int
 }
@@ -116,6 +116,7 @@ type ServerOpts struct {
 	Broker        Broker
 	Results       Results
 	Logger        slog.Handler
+	UseJSON       bool
 	TraceProvider *trace.TracerProvider
 }
 
@@ -140,6 +141,7 @@ func NewServer(o ServerOpts) (*Server, error) {
 		tasks:       make(map[string]Task),
 		defaultConc: runtime.GOMAXPROCS(0),
 		queues:      make(map[string]uint32),
+		useJSON:     o.UseJSON,
 	}, nil
 }
 
@@ -182,7 +184,7 @@ func (s *Server) GetPending(ctx context.Context, queue string) ([]JobMessage, er
 
 	var jobMsg = make([]JobMessage, len(rs))
 	for i, r := range rs {
-		if err := msgpack.Unmarshal([]byte(r), &jobMsg[i]); err != nil {
+		if err := s.UnmarshalMsg([]byte(r), &jobMsg[i]); err != nil {
 			return nil, err
 		}
 	}
@@ -268,7 +270,7 @@ func (s *Server) process(ctx context.Context, w chan []byte) {
 				err error
 			)
 			// Decode the bytes into a job message
-			if err = msgpack.Unmarshal(work, &msg); err != nil {
+			if err = s.UnmarshalMsg(work, &msg); err != nil {
 				s.spanError(span, err)
 				s.log.Error("error unmarshalling task", "error", err)
 				break
@@ -422,7 +424,7 @@ func (s *Server) retryJob(ctx context.Context, msg JobMessage) error {
 	}
 
 	msg.Retried += 1
-	b, err := msgpack.Marshal(msg)
+	b, err := s.MarshalMsg(msg)
 	if err != nil {
 		s.spanError(span, err)
 		return err

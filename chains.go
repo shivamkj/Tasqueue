@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 // ChainMeta contains fields related to a chain job.
@@ -135,7 +134,7 @@ checkJobs:
 const chainPrefix = "chain:msg:"
 
 func (s *Server) setChainMessage(ctx context.Context, c ChainMessage) error {
-	b, err := msgpack.Marshal(c)
+	b, err := s.MarshalMsg(c)
 	if err != nil {
 		return err
 	}
@@ -149,7 +148,7 @@ func (s *Server) getChainMessage(ctx context.Context, id string) (ChainMessage, 
 	}
 
 	var c ChainMessage
-	if err := msgpack.Unmarshal(b, &c); err != nil {
+	if err := s.UnmarshalMsg(b, &c); err != nil {
 		return ChainMessage{}, err
 	}
 

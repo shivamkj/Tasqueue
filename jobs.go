@@ -2,6 +2,7 @@ package tasqueue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -192,7 +193,7 @@ func (s *Server) enqueueScheduled(ctx context.Context, msg JobMessage) error {
 		defer span.End()
 	}
 
-	b, err := msgpack.Marshal(msg)
+	b, err := s.MarshalMsg(msg)
 	if err != nil {
 		s.spanError(span, err)
 		return err
@@ -213,7 +214,7 @@ func (s *Server) enqueueMessage(ctx context.Context, msg JobMessage) error {
 		defer span.End()
 	}
 
-	b, err := msgpack.Marshal(msg)
+	b, err := s.MarshalMsg(msg)
 	if err != nil {
 		s.spanError(span, err)
 		return err
@@ -236,7 +237,7 @@ func (s *Server) setJobMessage(ctx context.Context, t JobMessage) error {
 		defer span.End()
 	}
 
-	b, err := msgpack.Marshal(t)
+	b, err := s.MarshalMsg(t)
 	if err != nil {
 		s.spanError(span, err)
 		return fmt.Errorf("could not set job message in store : %w", err)
@@ -265,10 +266,24 @@ func (s *Server) GetJob(ctx context.Context, id string) (JobMessage, error) {
 	}
 
 	var t JobMessage
-	if err := msgpack.Unmarshal(b, &t); err != nil {
+	if err := s.UnmarshalMsg(b, &t); err != nil {
 		s.spanError(span, err)
 		return JobMessage{}, err
 	}
 
 	return t, nil
+}
+
+func (s *Server) UnmarshalMsg(data []byte, v any) error {
+	if s.useJSON {
+		return json.Unmarshal(data, &v)
+	}
+	return msgpack.Unmarshal(data, &v)
+}
+
+func (s *Server) MarshalMsg(v any) ([]byte, error) {
+	if s.useJSON {
+		return json.Marshal(v)
+	}
+	return msgpack.Marshal(v)
 }
