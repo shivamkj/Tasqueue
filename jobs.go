@@ -78,7 +78,7 @@ func DefaultMeta(opts JobOpts) Meta {
 
 // NewJob returns a job with arbitrary payload.
 // It accepts the name of the task, the payload and a list of options.
-func NewJob(handler string, payload []byte, opts JobOpts) (Job, error) {
+func NewJob(handler string, payload []byte, opts JobOpts) Job {
 	if opts.Queue == "" {
 		opts.Queue = DefaultQueue
 	}
@@ -87,7 +87,7 @@ func NewJob(handler string, payload []byte, opts JobOpts) (Job, error) {
 		Opts:    opts,
 		Task:    handler,
 		Payload: payload,
-	}, nil
+	}
 }
 
 // JobCtx is passed onto handler functions. It allows access to a job's meta information to the handler.
@@ -148,11 +148,7 @@ func (s *Server) enqueueWithMeta(ctx context.Context, t Job, meta Meta) (string,
 			t.Opts.ETA = sch.Next(time.Now())
 		}
 		// Create a new job that will be enqueued after existing job
-		j, err := NewJob(t.Task, t.Payload, t.Opts)
-		if err != nil {
-			s.spanError(span, err)
-			return "", err
-		}
+		j := NewJob(t.Task, t.Payload, t.Opts)
 
 		// Set current jobs OnSuccess as next job
 		t.OnSuccess = append(t.OnSuccess, &j)

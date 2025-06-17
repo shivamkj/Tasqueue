@@ -45,18 +45,16 @@ func main() {
 	go srv.Start(ctx)
 
 	b, _ := json.Marshal(tasks.SumPayload{Arg1: 5, Arg2: 4})
-	task, err := tasqueue.NewJob("add", b, tasqueue.JobOpts{})
+	_, err = srv.Enqueue(ctx, tasqueue.NewJob("add", b, tasqueue.JobOpts{}))
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv.Enqueue(ctx, task)
 
 	b, _ = json.Marshal(tasks.SumPayload{Arg1: 5, Arg2: 4})
-	task, err = tasqueue.NewJob("add", b, tasqueue.JobOpts{})
+	_, err = srv.Enqueue(ctx, tasqueue.NewJob("add", b, tasqueue.JobOpts{}))
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv.Enqueue(ctx, task)
 	fmt.Println("exit..")
 	for {
 		select {

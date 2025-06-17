@@ -23,11 +23,7 @@ const (
 
 // newJob returns a job configured for the sample handler with an empty byte payload.
 func newJob(b *testing.B) Job {
-	job, err := NewJob(sampleHandler, []byte{}, JobOpts{})
-	if err != nil {
-		b.Fatal(err)
-	}
-	return job
+	return NewJob(sampleHandler, []byte{}, JobOpts{})
 }
 
 // serverWithRedis returns a tasqueue server with redis as broker and results.

@@ -150,10 +150,7 @@ func TestSaveJob(t *testing.T) {
 	}
 
 	// Create a job that passes the data needed to be saved.
-	job, err := NewJob("validate-save", []byte(savedData), JobOpts{MaxRetries: 1})
-	if err != nil {
-		t.Fatal(err)
-	}
+	job := NewJob("validate-save", []byte(savedData), JobOpts{MaxRetries: 1})
 
 	go srv.Start(ctx)
 
@@ -198,10 +195,7 @@ func TestDeleteJob(t *testing.T) {
 	}
 
 	// Create a job that passes the data needed to be saved.
-	job, err := NewJob("validate-save", []byte(savedData), JobOpts{MaxRetries: 1})
-	if err != nil {
-		t.Fatal(err)
-	}
+	job := NewJob("validate-save", []byte(savedData), JobOpts{MaxRetries: 1})
 
 	go srv.Start(ctx)
 
@@ -253,7 +247,7 @@ func TestJobsOnError(t *testing.T) {
 
 	j := makeJob(t, taskName, true)
 
-	errJob, _ := NewJob("error", []byte{}, JobOpts{
+	errJob := NewJob("error", []byte{}, JobOpts{
 		Queue: "error_task",
 	})
 
@@ -277,10 +271,5 @@ func makeJob(t *testing.T, taskName string, doErr bool) Job {
 		t.Fatal(err)
 	}
 
-	job, err := NewJob(taskName, j, JobOpts{MaxRetries: 1})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return job
+	return NewJob(taskName, j, JobOpts{MaxRetries: 1})
 }

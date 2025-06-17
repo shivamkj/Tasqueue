@@ -94,11 +94,7 @@ func main() {
 
 	for i := 0; i < 3; i++ {
 		b, _ := json.Marshal(tasks.SumPayload{Arg1: i, Arg2: 4})
-		task, err := tasqueue.NewJob("add", b, tasqueue.JobOpts{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		chain = append(chain, task)
+		chain = append(chain, tasqueue.NewJob("add", b, tasqueue.JobOpts{}))
 	}
 
 	t, _ := tasqueue.NewGroup(chain, tasqueue.GroupOpts{})
